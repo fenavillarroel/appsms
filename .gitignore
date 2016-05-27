@@ -3,6 +3,4 @@
 .*.swo
 databases/*.table
 databases/*.log
-errors/*
-sessions/
 
