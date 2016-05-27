@@ -1,0 +1,17 @@
+{{extend 'layout.html'}}
+<h2><b>Dispositivos Atachados</b></h2>
+<div class="CSSTableGenerator">
+        <table>
+        <tr>
+				<td>Dispositivo</td>
+		</tr>
+            {{for f in files:}}
+                <tr>
+                    <td>{{=f}}</td>
+                </tr>
+            {{pass}}
+        <tr>
+			<td><h3>Total Dispositivos Disponibles={{=total}}</h3> </td>
+		</tr>
+        </table>
+</div>

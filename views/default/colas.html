@@ -1,0 +1,29 @@
+{{extend "layout.html"}}
+<div class="CSSTableGenerator">
+        <table>
+                <tr>
+
+				<td>COLA</td>
+				<td>Archivos</td>
+		<tr>
+				{{i=0}}
+				{{for c in queue:}}
+				<td>{{=c.queue}}</td>
+	
+						{{arch=colas[i]}}
+						
+						<td>
+							{{if arch:}}
+								{{=arch}}
+							{{pass}}
+						</td>
+		</tr>
+					<tr>
+						<td>Total SMS en cola {{=c.queue}}=</td>
+						<td>{{=len(arch)}}</td>
+					</tr>
+					{{i+=1}}
+				{{pass}}
+
+        </table>
+</div>
