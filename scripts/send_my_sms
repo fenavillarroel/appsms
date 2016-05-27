@@ -1,0 +1,30 @@
+#!/bin/sh
+# Envia sms y agrega outgoing id de cliente
+# parametros:
+# $1 = canal queue
+# $2 = numero de destino
+# $3 = texto
+
+
+# configuracion base de datos
+SQL_HOST=localhost
+SQL_USER=root
+SQL_PASSWORD="vmo123"
+SQL_DATABASE=smsd
+SQL_TABLE=outgoing
+
+DATE=`date +"%Y-%m-%d %H:%M:%S"`
+TO=`echo "$2" | sed 's/ //g' | sed 's/+//g' | sed 's/s//g' | sed 's/-//g'`
+TEXTSQL=$(echo "$3" | sed 's/\\/\\\\/g' | sed 's/\"/\\\"/g')
+
+#Set some SQL parameters
+if [ "$SQL_PASSWORD" != "" ]; then
+  SQL_ARGS="-p$SQL_PASSWORD";
+else
+  SQL_ARGS="";
+fi
+SQL_ARGS="-h $SQL_HOST -u $SQL_USER $SQL_ARGS -D $SQL_DATABASE -s -e"
+
+#Insert a new entry into the SQL table
+mysql $SQL_ARGS "insert into $SQL_TABLE (customer_id, number, sms_text, checked) values (\"$1\",\"$TO\",CONVERT(\"$TEXTSQL\" USING utf8), 0);SELECT LAST_INSERT_ID();";
+/usr/local/bin/sendsms  $1 $TO "$3"

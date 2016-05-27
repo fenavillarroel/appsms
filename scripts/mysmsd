@@ -1,0 +1,74 @@
+#!/bin/sh
+
+#if [ "$1" == "RECEIVED" ]; then
+
+#  if sed -e '/^$/ q' < "$2" | grep "^Alphabet: UCS2" > /dev/null; then
+#    TMPFILE=`mktemp /tmp/smsd_XXXXXX`
+#    sed -e '/^$/ q' < "$2" | sed -e 's/Alphabet: UCS2/Alphabet: UTF-8/g' > $TMPFILE
+#    sed -e '1,/^$/ d' < "$2" | iconv -f UNICODEBIG -t UTF-8 >> $TMPFILE
+#    mv $TMPFILE "$2"
+#  fi
+
+#fi
+
+# This is an example script that logs all events into an SQL database
+# You need a MYSQL database as described in the documentation.
+# Please read the documentation before using this script.
+
+SQL_HOST=localhost
+SQL_USER=root
+SQL_PASSWORD="vmo123"
+SQL_DATABASE=smsd
+SQL_TABLE=sms_log
+
+DATE=`date +"%Y-%m-%d %H:%M:%S"`
+#Extract data from the SMS file
+FROM=`formail -zx From: < $2 | sed 's/"//g'`
+TO=`formail -zx To: < $2`
+#Remove plus sign, spaces, minus and short number prefix
+TO=`echo "$TO" | sed 's/ //g' | sed 's/+//g' | sed 's/s//g' | sed 's/-//g'`
+SUBJECT=`formail -zx Subject: < $2`
+SENT=`formail -zx Sent: < $2`
+TEXT=`sed -e '1,/^$/ d' < $2`
+TEXTSQL=$(echo "$TEXT" | sed 's/\\/\\\\/g' | sed 's/\"/\\\"/g')
+IDS=`formail -zx idsms: < $2`
+#Set some SQL parameters
+if [ "$SQL_PASSWORD" != "" ]; then
+  SQL_ARGS="-p$SQL_PASSWORD";
+else
+  SQL_ARGS="";
+fi
+SQL_ARGS="-h $SQL_HOST -u $SQL_USER $SQL_ARGS -D $SQL_DATABASE -s -e"
+
+# get id sms if exist set checked
+QUERY="SELECT id FROM outgoing WHERE number = '$TO' AND checked =  0 AND created_at >= (now() - INTERVAL 320 MINUTE) ORDER BY id DESC LIMIT 1;"
+id_sms=$(mysql $SQL_ARGS "$QUERY")
+if ! [ ${#id_sms} -eq 0 ]; then
+	query_set="UPDATE outgoing SET checked = 1 WHERE id ='$id_sms'"
+	id_query_update=$(mysql $SQL_ARGS "$query_set")
+else
+	id_sms=0
+fi
+
+
+#Insert a new entry into the SQL table
+
+if [ "$1" = "FAILED" ] || [ "$1" = "SENT" ]; then
+   mysql $SQL_ARGS "insert into $SQL_TABLE (type,sent,sender,receiver,msgid,text, id_outgoing) values (\"$1\",\"$DATE\",\"$FROM\",\"$TO\",\"$3\",CONVERT(\"$TEXTSQL\" USING utf8), \"$IDS\");";
+elif [ "$1" = "RECEIVED" ]; then
+   mysql $SQL_ARGS "insert into $SQL_TABLE (type,sent,received,sender,receiver,text, id_outgoing) values (\"RECEIVED\",\"$SENT\",\"$DATE\",\"$FROM\",\"$SUBJECT\",CONVERT(\"$TEXTSQL\" USING utf8), \"$id_sms\");";
+   if [ "$FROM" = "Entel" ] || [ "$FROM" = "entel" ]; then
+    /home/fvillarroel/smstools3/scripts/bolsas.py $SUBJECT "$TEXTSQL"
+   fi
+elif [ "$1" = "REPORT" ]; then
+   #Extract more data from the status report file
+   DISCHARGE=`sed -e 1,/SMS\ STATUS/d < $2 | formail -zx Discharge_timestamp:`
+   MSGID=`sed -e 1,/SMS\ STATUS/d < $2 | formail -zx Message_id:`
+   STATUS=`sed -e 1,/SMS\ STATUS/d < $2 | formail -zx Status: | cut -f1 -d,`
+
+   if [ "$MSGID" != "" ]; then
+     ID=`mysql $SQL_ARGS "select id from $SQL_TABLE where receiver=\"$FROM\" and type=\"SENT\" and msgid=\"$MSGID\" order by id desc limit 1;"`
+     mysql $SQL_ARGS "update $SQL_TABLE set received=\"$DISCHARGE\",status=\"$STATUS\" where id=\"$ID\";"
+   fi
+
+fi
