@@ -55,6 +55,7 @@ fi
 
 if [ "$1" = "FAILED" ] || [ "$1" = "SENT" ]; then
    mysql $SQL_ARGS "insert into $SQL_TABLE (type,sent,sender,receiver,msgid,text, id_outgoing) values (\"$1\",\"$DATE\",\"$FROM\",\"$TO\",\"$3\",CONVERT(\"$TEXTSQL\" USING utf8), \"$IDS\");";
+    /home/fvillarroel/smstools3/scripts/failedandsent.py ids "$1" "$DATE"
 elif [ "$1" = "RECEIVED" ]; then
    mysql $SQL_ARGS "insert into $SQL_TABLE (type,sent,received,sender,receiver,text, id_outgoing) values (\"RECEIVED\",\"$SENT\",\"$DATE\",\"$FROM\",\"$SUBJECT\",CONVERT(\"$TEXTSQL\" USING utf8), \"$id_sms\");";
    if [ "$FROM" = "Entel" ] || [ "$FROM" = "entel" ]; then
@@ -69,6 +70,7 @@ elif [ "$1" = "REPORT" ]; then
    if [ "$MSGID" != "" ]; then
      ID=`mysql $SQL_ARGS "select id from $SQL_TABLE where receiver=\"$FROM\" and type=\"SENT\" and msgid=\"$MSGID\" order by id desc limit 1;"`
      mysql $SQL_ARGS "update $SQL_TABLE set received=\"$DISCHARGE\",status=\"$STATUS\" where id=\"$ID\";"
+     /home/fvillarroel/smstools3/scripts/delivery.py $ID "$DISCHARGE"
    fi
 
 fi
