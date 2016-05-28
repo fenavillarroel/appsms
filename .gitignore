@@ -1,4 +1,9 @@
 *.pyc
 .*.swp
 .*.swo
+<<<<<<< HEAD
+=======
+databases/*.table
+databases/*.log
+>>>>>>> 40ac8c490b70e0632087b9144498f163a5a7fe9f
 
