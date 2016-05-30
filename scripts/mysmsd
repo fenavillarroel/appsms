@@ -55,7 +55,7 @@ fi
 
 if [ "$1" = "FAILED" ] || [ "$1" = "SENT" ]; then
    mysql $SQL_ARGS "insert into $SQL_TABLE (type,sent,sender,receiver,msgid,text, id_outgoing) values (\"$1\",\"$DATE\",\"$FROM\",\"$TO\",\"$3\",CONVERT(\"$TEXTSQL\" USING utf8), \"$IDS\");";
-    /home/fvillarroel/smstools3/scripts/failedandsent.py ids "$1" "$DATE"
+    /home/fvillarroel/smstools3/scripts/failedandsent.py $IDS "$1" "$DATE"
 elif [ "$1" = "RECEIVED" ]; then
    mysql $SQL_ARGS "insert into $SQL_TABLE (type,sent,received,sender,receiver,text, id_outgoing) values (\"RECEIVED\",\"$SENT\",\"$DATE\",\"$FROM\",\"$SUBJECT\",CONVERT(\"$TEXTSQL\" USING utf8), \"$id_sms\");";
    if [ "$FROM" = "Entel" ] || [ "$FROM" = "entel" ]; then

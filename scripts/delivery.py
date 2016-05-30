@@ -16,19 +16,19 @@ if __name__ == '__main__':
     con.execute("select id_outgoing from sms_log where id= %s" % (id_sms,))
     rws=con.fetchone()
 
-    
-    #Enviamos el POST a la API failedandsent·
+    formato='-H Content-Type: application/json -d {"idsms":%s,"fecha":"%s" } http://portal.opendata.cl:80/smscenter/default/delivery'  % (rws[0],fecha)
 
-    formato='-H Content-Type: application/json -d {"idsms":%s,"fecha":"%s" } http://apisms.opendata.cl:80/smscenter/default/delivery' \
+    #sys.stderr.write(formato)
+    #sys.stderr.flush()
 
-                        % (rws[0],fecha)
+
     try:
 
         maxm = subprocess.check_output('curl  %s' % (formato,))
 
     except:
 
-        return 0
+       sys.exit(0)
 
-    return 1
+    sys.exit(1)
 

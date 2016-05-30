@@ -297,7 +297,7 @@ def api():
 
     def POST(*args, **vars):
 
-        bin_sendsms='/usr/local/bin/send_my_sms'
+        bin_sendsms="/usr/local/bin/new_sendsms %s -A idsms:%s '%s'"
         text = request.vars.text
         number = request.vars.number
         username = request.vars.username
@@ -312,13 +312,13 @@ def api():
         if not canal:
             raise HTTP(500)
 
-        db.executesql('update canales set cantidad=cantidad -1 where id=%s' % (canal.id,))
-        db.commit()
+        #db.executesql('update canales set cantidad=cantidad -1 where id=%s' % (canal.id,))
+        #db.commit()
 
-        channel=canal.queue
-        cmd = "%s %s %s \"%s\"" %  (bin_sendsms, channel, number, text)
+        #channel=canal.queue
+        cmd = "%s %s  \"%s\"" %  (bin_sendsms, number, text)
         execute = os.popen(cmd).read()
-        app.logger.debug(execute)
+        #app.logger.debug(execute)
         #sms_id = execute.split('\n')[0]
 
         #if not tablename == 'person':
