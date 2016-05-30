@@ -143,6 +143,6 @@ do
     fi
   fi
 
-  FILE=`mktemp /var/spool/sms/GSM1/send_XXXXXX`
+  FILE=`mktemp /var/spool/sms/outgoing/send_XXXXXX`
   mv $TMPFILE $FILE
 done

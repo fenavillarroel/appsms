@@ -305,7 +305,7 @@ def api():
         id_sms = request.vars.id
         if username != 'fenvillarroel' or password !='abc123jU':
             #app.logger.debug('login error send')
-            return True
+            return False
 
         canal = db.executesql('select * canales where status = 1 and cantidad > 0 order by random() limit 1',as_dict=True)
 
