@@ -1,5 +1,8 @@
 #!/usr/bin/python
 
+import json
+import urllib2
+import requests
 import sys
 #import re
 import string
@@ -13,22 +16,20 @@ if __name__ == '__main__':
 
     db = MySQLdb.connect(host="localhost",user="root",passwd="vmo123",db="smsd")
     con=db.cursor()
-    con.execute("select id_outgoing from sms_log where id= %s" % (id_sms,))
+    con.execute("select id_outgoing from sms_log where id= %s order by id desc limit 1" % (id_sms,))
     rws=con.fetchone()
+    sys.stderr.write('=======>>>>> Id sms: %s  Fecha  %s\n'% (rws[0],fecha));
+    sys.stderr.flush()
 
-    formato='-H Content-Type: application/json -d {"idsms":%s,"fecha":"%s" } http://portal.opendata.cl:80/smscenter/default/delivery'  % (rws[0],fecha)
+    #formato='-H Content-Type: application/json -d {"idsms":%s,"fecha":"%s" } http://portal.opendata.cl:80/smscenter/default/delivery'  % (rws[0],fecha)
+    payload={}
+    payload['idsms']=rws[0]
+    payload['fecha']=fecha
+    url='http://portal.opendata.cl/smscenter/default/delivery'
+    headers={'content-type': 'application/json'}
+    response = requests.post(url, data=json.dumps(payload), headers=headers)
 
-    #sys.stderr.write(formato)
-    #sys.stderr.flush()
-
-
-    try:
-
-        maxm = subprocess.check_output('curl  %s' % (formato,))
-
-    except:
-
-       sys.exit(0)
-
-    sys.exit(1)
-
+    if response.ok:
+        print 'OK'
+    else:
+        print response

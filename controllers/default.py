@@ -297,30 +297,37 @@ def api():
 
     def POST(*args, **vars):
 
-        bin_sendsms="/usr/local/bin/new_sendsms %s -A idsms:%s '%s'"
+
         text = request.vars.text
         number = request.vars.number
         username = request.vars.username
         password = request.vars.password
         id_sms = request.vars.id
-        if username != 'fenvillarroel' or password !='abc123jU':
-            #app.logger.debug('login error send')
-            return False
+        os.system('echo text:%s number:%s username:%s password:%s idsms:%s > /tmp/reg' % (text,number,username,password,id_sms))
+        status='Cola'
+        if username != 'fenavillarroel' and password !='abc123jU':
+            raise HTTP(500)
 
-        canal = db.executesql('select * canales where status = 1 and cantidad > 0 order by random() limit 1',as_dict=True)
+        canal = db.executesql('select * from canales where status = 1 and cantidad > 0 order by rand() limit 1')[0]
 
         if not canal:
             raise HTTP(500)
 
         #db.executesql('update canales set cantidad=cantidad -1 where id=%s' % (canal.id,))
         #db.commit()
-
+        cmd="/usr/local/bin/new_sendsms %s -A idsms:%s '%s'" % (number,id_sms,text)
+        p=os.system("echo -e '%s'|/usr/bin/sudo -S %s" % ('vmo123\n', cmd))
+        #os.system('echo %s > /tmp/username' % (cmd,))
         #channel=canal.queue
-        cmd = "%s %s  \"%s\"" %  (bin_sendsms, number, text)
-        execute = os.popen(cmd).read()
+        #cmd = "sudo -S /usr/local/bin/new_sendsms %s -A idsms:%s \"%s\"" %  (number, id_sms, text)
+        #os.system('echo %s > /tmp/username' % (cmd,))
+        #os.system(cmd)
+        #os.popen(cmd).read('vmo123')
+        #subprocess.call(cmd,shell=True)
+        #execute = os.popen(cmd).read()
         #app.logger.debug(execute)
         #sms_id = execute.split('\n')[0]
-
+        return dict(status=status)
         #if not tablename == 'person':
         #    raise HTTP(400)
         #return number.json

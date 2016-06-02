@@ -1,33 +1,30 @@
 #!/usr/bin/python
 
-import sys,os
-import subprocess
-#import re
-#import string
-#import MySQLdb
+import json
+import sys
+import requests
 
 if __name__ == '__main__':
 
     ids=str(sys.argv[1]).strip()
     tipo=str(sys.argv[2]).strip()
     fecha=str(sys.argv[3]).strip()
-    #sys.stderr.write('Id sms: %s Tipo : %s Fecha  %s\n'% (ids,tipo,fecha));
-    #sys.stderr.flush()
+    sys.stderr.write('Id sms: %s Tipo : %s Fecha  %s\n'% (ids,tipo,fecha));
+    sys.stderr.flush()
 
     #Enviamos el POST a la API failedandsent 
+    payload={}
+    payload['idsms']=ids
+    payload['tipo']=tipo
+    payload['fecha']=fecha
+    url='http://portal.opendata.cl/smscenter/default/failedandsent'
+    headers={'content-type': 'application/json'}
+    response = requests.post(url, data=json.dumps(payload), headers=headers)
 
-    formato='-H Content-Type: application/json -d {"idsms":%s,"tipo":"%s","fecha":"%s" } http://portal.opendata.cl:80/smscenter/default/failedandsent' % (ids,tipo,fecha) 
+    if response.ok:
+        print 'Ok'
+    else:
+        print response
 
-    #sys.stderr.write(formato)
-    #sys.stderr.flush()
 
-    try:
-
-        maxm = subprocess.check_output('curl  %s' % (formato,))
-
-    except:
-
-       sys.exit(0)
-
-    sys.exit(1)
 
