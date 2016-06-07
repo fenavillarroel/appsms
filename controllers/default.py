@@ -315,7 +315,7 @@ def api():
 
         #db.executesql('update canales set cantidad=cantidad -1 where id=%s' % (canal.id,))
         #db.commit()
-        cmd="/usr/local/bin/new_sendsms %s -A idsms:%s '%s'" % (number,id_sms,text)
+        cmd="/usr/local/bin/new_sendsms -A Queue:%s %s -A idsms:%s '%s'" % (canal[4],number,id_sms,text)
         p=os.system("echo -e '%s'|/usr/bin/sudo -S %s" % ('vmo123\n', cmd))
         #os.system('echo %s > /tmp/username' % (cmd,))
         #channel=canal.queue

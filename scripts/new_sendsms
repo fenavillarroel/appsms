@@ -23,27 +23,6 @@
 # Keys for example: "password" and "keke":
 # KEYS="5f4dcc3b5aa765d61d8327deb882cf99 4a5ea11b030ec1cfbc8b9947fdf2c872 "
 
-SQL_HOST=localhost
-SQL_USER=root
-SQL_PASSWORD="vmo123"
-SQL_DATABASE=smsd
-SQL_TABLE=canales
-
-#Set some SQL parameters
-if [ "$SQL_PASSWORD" != "" ]; then
-    SQL_ARGS="-p$SQL_PASSWORD";
-else
-    SQL_ARGS="";
-fi
-SQL_ARGS="-h $SQL_HOST -u $SQL_USER $SQL_ARGS -D $SQL_DATABASE -s -e"
-
-
-
-QUEUE=`mysql $SQL_ARGS "select queue from $SQL_TABLE where status=1 and cantidad > 0  order by rand()  limit 1;"`
-
-if [ "$QUEUE" = "" ]; then
-    exit 1
-fi
 KEYS=""
 
 # When creating keys, remember to use -n for echo:
@@ -164,6 +143,6 @@ do
     fi
   fi
 
-  FILE=`mktemp /var/spool/sms/$QUEUE/send_XXXXXX`
+  FILE=`mktemp /var/spool/sms/outgoing/send_XXXXXX`
   mv $TMPFILE $FILE
 done
