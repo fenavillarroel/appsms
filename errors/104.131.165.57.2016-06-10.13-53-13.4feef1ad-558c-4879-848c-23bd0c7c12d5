@@ -1,0 +1,483 @@
+(dp1
+S'output'
+p2
+S"<type 'exceptions.UnicodeEncodeError'> 'ascii' codec can't encode character u'\\xe9' in position 146: ordinal not in range(128)"
+p3
+sS'layer'
+p4
+S'/home/web2py/applications/appsms/controllers/default.py'
+p5
+sS'code'
+p6
+S'# -*- coding: utf-8 -*-\n# this file is released under public domain and you can use without limitations\n\n#########################################################################\n## This is a sample controller\n## - index is the default action of any application\n## - user is required for authentication and authorization\n## - download is for downloading files uploaded in the db (does streaming)\n#########################################################################\n@auth.requires_login()\ndef index():\n    """\n    example action using the internationalization operator T and flash\n    rendered by views/default/index.html or views/generic.html\n\n    if you need a simple wiki simply replace the two lines below with:\n    return auth.wiki()\n    """\n    #response.flash = T("Hello World")\n    #return dict(message=T(\'Welcome to web2py!\'))\n    redirect (URL(\'canales\'),client_side=True)\n\n@auth.requires_login()\ndef canales():\n\n    \n    query=(db.canales)\n    db.canales.status.represent = lambda id,row: estado[id]\n    fields=[db.canales.numero,db.canales.cantidad,db.canales.credito,db.canales.queue,db.canales.status]\n        #headers = {\'db.pagos.fecha\':   \'Fecha\',\n        #   \'db.pagos.monto\': \'Valor\',\'db.pagos.comments\':\'Observaciones\'}\n    orderby=(db.canales.queue)\n    links=[lambda row: A(IMG(_src=URL(r=request,c=\'static\',f=\'images/green_dollar.png\'), _width=16, _height=16), \n        _href=URL(\'update_saldo\', args=[row.id,row.queue])),\n            lambda row: A(IMG(_src=URL(r=request,c=\'static\',f=\'images/icon-recarga.png\'), _width=16, _height=16), \n        _href=URL(\'recarga\', args=[row.queue]))]\n    #links = [lambda row: A(\'View Post\',_href=URL("default","update_saldo",args=[row.id,row.queue]))]\n    form = SQLFORM.grid(query=query, fields=fields, orderby=orderby, csv=False, create=True, links=links, \n                         deletable=True , editable=True, details=False,paginate=15,maxtextlength=50, user_signature=False)\n    form[\'_style\']=\'border:1px solid black\'\n\n    #customized = myformat(form.rows)\n    #form.element(\'.web2py_table\', replace=customized)\n\n    #query=db(db.canales).select(db.canales.ALL, orderby=db.canales.queue)\n    #print query\n    #orm=SQLFORM.grid(query=query)\n\n    return dict(form=form)\n\n@auth.requires_login()\ndef update_saldo():\n\n    r=request.args[0]\n    q=request.args[1]\n\n    #cl=db(db.auth_user.id == recors).select(db.auth_user.saldo,db.auth_user.first_name,db.auth_user.last_name)[0]\n\n    form = SQLFORM.factory(Field(\'monto\',\'integer\', label="Monto",requires=IS_INT_IN_RANGE(1000,100000),default=(1600)),formstyle=\'bootstrap\')\n\n\n    submit = form.element(_type="submit")\n    submit["_onclick"] = "return confirm(\'Confirma Recarga Saldo\');"\n    form[\'_style\']=\'border:1px solid black\'\n\n    #submit["_onclick"] = "return confirm(\'Confirma o Cancela Datos Cliente\');"\n    if form.accepts(request.vars,session):\n\n                db(db.canales.id==r).update(credito=db.canales.credito+int(form.vars.monto))\n                db.commit()\n                #cadena=\'/usr/local/bin/send_my_sms %s 103 250SMS\' % (q,)\n                #os.system(cadena)\n                session.flash = T(\'Recarga Exitosa!!!\')\n                redirect(URL(\'canales\'))\n\n    return dict(form=form)\n\n\n\n\n@auth.requires_login()\ndef recarga():\n\n    r=request.args[0]\n    #q=request.args[1]\n\n    #cl=db(db.auth_user.id == recors).select(db.auth_user.saldo,db.auth_user.first_name,db.auth_user.last_name)[0]\n\n    form = SQLFORM.factory(Field(\'monto\',\'integer\', default=1600, label="Recarga Bolsa 80 SMS"),formstyle=\'bootstrap\')\n\n\n    submit = form.element(_type="submit")\n    submit["_onclick"] = "return confirm(\'Confirma Recarga\');"\n    form[\'_style\']=\'border:1px solid black\'\n\n    #submit["_onclick"] = "return confirm(\'Confirma o Cancela Datos Cliente\');"\n    if form.accepts(request.vars,session):\n\n                #db(db.canales.id==r).update(credito=db.canales.credito+int(form.vars.monto))\n                #db.commit()\n                try:\n                    cadena="echo vmo123 | sudo -S /usr/local/bin/send_my_sms %s 103 80SMS" % (q,)\n                    #cadena=\'echo vmo123 | sudo -S /usr/local/bin/send_my_sms %s 103 80SMS\' % (q,)\n                    os.system(cadena)\n                    session.flash = T(\'Recarga Exitosa!!!\')\n                    redirect(URL(\'canales\'))\n                except:\n                    session.flash = T(\'Fallo APP Recarga !!!!!!!!!!\')\n                    redirect(URL(\'canales\'))\n\n    return dict(form=form)\n\n@auth.requires_login()\ndef recibidos():\n\n    query=(db.sms_log.type==\'RECEIVED\')\n    fields=[db.sms_log.id,db.sms_log.type,db.sms_log.sent,db.sms_log.received,db.sms_log.sender,db.sms_log.receiver,db.sms_log.text]\n    orderby=(~db.sms_log.id)\n    form = SQLFORM.grid(query=query, fields=fields, orderby=orderby,\n                        create=False, deletable=False, editable=False,details=False,paginate=15,maxtextlength=50,)\n\n    return dict(form=form)\n\n\n\n\n\n@auth.requires_login()\ndef log():\n\n    query=(db.sms_log)\n\n    fields=[db.sms_log.type,db.sms_log.sent,db.sms_log.received,db.sms_log.sender,db.sms_log.receiver,db.sms_log.text,db.sms_log.status,db.sms_log.id_outgoing]\n    orderby=(~db.sms_log.sent)\n    #links=[lambda row: A(IMG(_src=URL(r=request,c=\'static\',f=\'images/Edit_Icon.png\'), _width=16, _height=16), _href=URL(\'edit_device\', args=row.id)),lambda row: A(IMG(_src=URL(r=request,c=\'static\',f=\'images/followme.png\'), _width=24, _height=24), _href=URL(\'add_follow\', args=row.id))]\n    #links = [lambda row: A(\'View Post\',_href=URL("default","update_saldo",args=[row.id,row.queue]))]\n    form = SQLFORM.grid(query=query, fields=fields, orderby=orderby, csv=True, create=False, formstyle=\'bootstrap\',\n                         deletable=False , editable=False, details=False,paginate=50,maxtextlength=50, user_signature=False)\n        #form[\'_style\']=\'border:1px solid black\'\n    #customized = myformat(form.rows)\n    #form.element(\'.web2py_table\', replace=customized)\n\n\n    return dict(form=form)\n\n@auth.requires_login()\ndef outgoing():\n\n    query=(db.outgoing)\n\n    fields=[db.outgoing.customer_id,db.outgoing.number,db.outgoing.sms_text,db.outgoing.checked,db.outgoing.created_at]\n    orderby=(~db.outgoing.created_at)\n    #links=[lambda row: A(IMG(_src=URL(r=request,c=\'static\',f=\'images/Edit_Icon.png\'), _width=16, _height=16), _href=URL(\'edit_device\', args=row.id)),lambda row: A(IMG(_src=URL(r=request,c=\'static\',f=\'images/followme.png\'), _width=24, _height=24), _href=URL(\'add_follow\', args=row.id))]\n    #links = [lambda row: A(\'View Post\',_href=URL("default","update_saldo",args=[row.id,row.queue]))]\n    form = SQLFORM.grid(query=query, fields=fields, orderby=orderby, csv=True, create=False, formstyle=\'table3cols\',\n                         deletable=False , editable=False, details=False,paginate=100,maxtextlength=50, user_signature=False)\n        #form[\'_style\']=\'border:1px solid black\'\n\n\n    return dict(form=form)\n\n\ndef user():\n    """\n    exposes:\n    http://..../[app]/default/user/login\n    http://..../[app]/default/user/logout\n    http://..../[app]/default/user/register\n    http://..../[app]/default/user/profile\n    http://..../[app]/default/user/retrieve_password\n    http://..../[app]/default/user/change_password\n    http://..../[app]/default/user/manage_users (requires membership in\n    use @auth.requires_login()\n        @auth.requires_membership(\'group name\')\n        @auth.requires_permission(\'read\',\'table name\',record_id)\n    to decorate functions that need access control\n    """\n    return dict(form=auth())\n\n\n@cache.action()\ndef download():\n    """\n    allows downloading of uploaded files\n    http://..../[app]/default/download/[filename]\n    """\n    return response.download(request, db)\n\n\ndef call():\n    """\n    exposes services. for example:\n    http://..../[app]/default/call/jsonrpc\n    decorate with @services.jsonrpc the functions to expose\n    supports xml, json, xmlrpc, jsonrpc, amfrpc, rss, csv\n    """\n    return service()\n\ndef myformat(rows):\n    #import gluon\n    #nuevo = gluon.dal.Rows()\n\n    new = TABLE()\n\n    for i in rows:\n        if i.received:\n\n            row = TR(TD(i.sent ), TD(i.type),TD(i.received),TD(i.sender),TD(i.receiver),TD(i.text),TD(i.status),TD(i.id_outgoing), _class=\'green\')\n        #elif i.account.startswith(\'B\'):\n        #    row = TR(TD(i.account), TD(i.concept), _class=\'orange\')\n        else:\n            row = TR(TD(i.sent), TD(i.type),TD(i.received),TD(i.sender),TD(i.receiver),TD(i.text),TD(i.status),TD(i.id_outgoing), _class=\'red\')\n        new.append(row)\n    return new\n\n\n\n@auth.requires_login()\ndef dispositivos():\n\n        import os,re\n        #Variable para la ruta al directorio\n        path = \'/dev/\'\n        #Lista vacia para incluir los ficheros\n        lstFiles = []\n        #Lista con todos los ficheros del directorio:\n        lstDir = os.walk(path)   #os.walk()Lista directorios y ficheros\n        #Crea una lista de los ficheros jpg que existen en el directorio y los incluye a la lista.\n        codigos = [\'BUS1-HUB1-PORT1\',\'BUS1-HUB1-PORT2\',\'BUS1-HUB1-PORT3\',\'BUS1-HUB1-PORT4\',\'BUS1-HUB1-PORT5\',\'BUS1-HUB1-PORT6\',\'BUS1-HUB1-PORT7\']\n        for root, dirs, files in lstDir:\n            for fichero in files:\n                (nombreFichero, extension) = os.path.splitext(fichero)\n                for elemento in codigos:\n                    #if re.match(nombreFichero, \'BUS1-HUB1-PORT.\'):\n                    if re.match(nombreFichero, elemento):\n                        lstFiles.append(nombreFichero)#+extension)\n        lstFiles.sort()\n        #return dict(files=TABLE(*[TR(TD(f)) for f in lstFiles]),total=len(lstFiles))\n        return dict(files=lstFiles,total=len(lstFiles))\n\n@auth.requires_login()\ndef colas():\n\n        import os\n\n        queue= db().select(db.canales.queue, orderby=db.canales.queue)\n        colas=[]\n        for i in queue:\n\n\n                try:\n                    files=os.listdir(\'/var/spool/sms/%s/\' % i.queue)\n                    colas.append(files)\n                except:\n                    files=[]\n                    colas.append(files)\n\n\n\n        return dict(queue=queue,colas=colas)\n\n\n@auth.requires_login()\ndef reload():\n\n    p=None\n    form = SQLFORM.factory(Field(\'Reload\',default=\'Reload SMS Tools\',writable=False))\n    submit = form.element(\'input\',_type=\'submit\')\n    #submit[\'_style\'] = \'display:none;\'\n    #submit["_onclick"] = "return confirm(\'Confirma Recarga Saldo\');"\n    #form[\'_style\']=\'border:1px solid black\'\n\n    #submit["_onclick"] = "return confirm(\'Confirma Reload SMS Tools\');"\n    if form.accepts(request.vars,session):\n        import os\n        #import subprocess\n        #p = subprocess.Popen(\'/usr/bin/sudo -S /etc/init.d/sms3 restart\', shell=True,stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n        #out, err = p.communicate(input=\'vmo123\')\n                         #    print "\\n".join("out: " + x for x in out.split(\'\\n\'))\n                         #    print "\\n".join("err: " + x for x in err.split(\'\\n\'))\n\n        #p=os.popen("/usr/bin/sudo -S /etc/init.d/sms3 restart", \'w\').write("vmo123\\n")\n        p=os.system("echo -e \'%s\'|/usr/bin/sudo -S %s" % (\'vmo123\\n\', \'/etc/init.d/sms3 restart\'))\n        if not p:\n            response.flash = T(\'Reload SMS Tools Exitoso!!!\')\n        #p=os.system(\'echo -e vmo123 | sudo -u fvillarroel -S /etc/init.d/sms3 stop\')\n    return dict(form=form,p=p)\n\n@request.restful()\ndef api():\n    response.view = \'generic.json\'\n\n    def GET(tablename, id):\n        if not tablename == \'person\':\n            raise HTTP(400)\n        return dict(person = db.person(id))\n\n    def POST(*args, **vars):\n\n\n        text = request.vars.text\n        number = request.vars.number\n        username = request.vars.username\n        password = request.vars.password\n        id_sms = request.vars.id\n        os.system(\'echo text:%s number:%s username:%s password:%s idsms:%s > /tmp/reg\' % (text,number,username,password,id_sms))\n        status=\'Cola\'\n        if username != \'fenavillarroel\' and password !=\'abc123jU\':\n            raise HTTP(500)\n\n        canal = db.executesql(\'select * from canales where status = 1 and cantidad > 0 order by rand() limit 1\')[0]\n\n        if not canal:\n            raise HTTP(500)\n\n        #db.executesql(\'update canales set cantidad=cantidad -1 where id=%s\' % (canal.id,))\n        #db.commit()\n        cmd="/usr/local/bin/new_sendsms -A Queue:%s %s -A idsms:%s \'%s\'" % (canal[4],number,id_sms,text)\n        p=os.system("echo -e \'%s\'|/usr/bin/sudo -S %s" % (\'vmo123\\n\', cmd))\n        #os.system(\'echo %s > /tmp/username\' % (cmd,))\n        #channel=canal.queue\n        #cmd = "sudo -S /usr/local/bin/new_sendsms %s -A idsms:%s \\"%s\\"" %  (number, id_sms, text)\n        #os.system(\'echo %s > /tmp/username\' % (cmd,))\n        #os.system(cmd)\n        #os.popen(cmd).read(\'vmo123\')\n        #subprocess.call(cmd,shell=True)\n        #execute = os.popen(cmd).read()\n        #app.logger.debug(execute)\n        #sms_id = execute.split(\'\\n\')[0]\n        return dict(status=status)\n        #if not tablename == \'person\':\n        #    raise HTTP(400)\n        #return number.json\n\n    return locals() \n\n\nresponse._vars=response._caller(api)\n'
+p7
+sS'snapshot'
+p8
+(dp9
+S'exception'
+p10
+(dp11
+S'__getslice__'
+p12
+S"<method-wrapper '__getslice__' of exceptions.UnicodeEncodeError object>"
+p13
+sS'encoding'
+p14
+S"'ascii'"
+p15
+sS'__str__'
+p16
+S"<method-wrapper '__str__' of exceptions.UnicodeEncodeError object>"
+p17
+sS'__reduce__'
+p18
+S'<built-in method __reduce__ of exceptions.UnicodeEncodeError object>'
+p19
+sS'__dict__'
+p20
+S'{}'
+p21
+sS'__sizeof__'
+p22
+S'<built-in method __sizeof__ of exceptions.UnicodeEncodeError object>'
+p23
+sS'__init__'
+p24
+S"<method-wrapper '__init__' of exceptions.UnicodeEncodeError object>"
+p25
+sS'__setattr__'
+p26
+S"<method-wrapper '__setattr__' of exceptions.UnicodeEncodeError object>"
+p27
+sS'__reduce_ex__'
+p28
+S'<built-in method __reduce_ex__ of exceptions.UnicodeEncodeError object>'
+p29
+sS'end'
+p30
+S'147'
+p31
+sS'__new__'
+p32
+S'<built-in method __new__ of type object>'
+p33
+sS'__format__'
+p34
+S'<built-in method __format__ of exceptions.UnicodeEncodeError object>'
+p35
+sS'__class__'
+p36
+S"<type 'exceptions.UnicodeEncodeError'>"
+p37
+sS'start'
+p38
+S'146'
+p39
+sS'__doc__'
+p40
+S"'Unicode encoding error.'"
+p41
+sS'object'
+p42
+S"u'echo text:SALEN CALENTITOS LOS PUNTITOS En JUN...avillarroel password:abc123jU idsms:7 > /tmp/reg'"
+p43
+sS'__getitem__'
+p44
+S"<method-wrapper '__getitem__' of exceptions.UnicodeEncodeError object>"
+p45
+sS'__setstate__'
+p46
+S'<built-in method __setstate__ of exceptions.UnicodeEncodeError object>'
+p47
+sS'__getattribute__'
+p48
+S"<method-wrapper '__getattribute__' of exceptions.UnicodeEncodeError object>"
+p49
+sS'args'
+p50
+S"('ascii', u'echo text:SALEN CALENTITOS LOS PUNTITOS En JUN...avillarroel password:abc123jU idsms:7 > /tmp/reg', 146, 147, 'ordinal not in range(128)')"
+p51
+sS'reason'
+p52
+S"'ordinal not in range(128)'"
+p53
+sS'__subclasshook__'
+p54
+S'<built-in method __subclasshook__ of type object>'
+p55
+sS'__unicode__'
+p56
+S'<built-in method __unicode__ of exceptions.UnicodeEncodeError object>'
+p57
+sS'__delattr__'
+p58
+S"<method-wrapper '__delattr__' of exceptions.UnicodeEncodeError object>"
+p59
+sS'__repr__'
+p60
+S"<method-wrapper '__repr__' of exceptions.UnicodeEncodeError object>"
+p61
+sS'__hash__'
+p62
+S"<method-wrapper '__hash__' of exceptions.UnicodeEncodeError object>"
+p63
+ssS'evalue'
+p64
+S"'ascii' codec can't encode character u'\\xe9' in position 146: ordinal not in range(128)"
+p65
+sS'request'
+p66
+cgluon.html
+XML_unpickle
+p67
+(S's\xa0?\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">ajax</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">application</td><td style="vertical-align:top;">:</td><td><div>appsms</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cid</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">client</td><td style="vertical-align:top;">:</td><td><div>104.131.165.57</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">controller</td><td style="vertical-align:top;">:</td><td><div>default</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">env</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">CONTENT_LENGTH</td><td style="vertical-align:top;">:</td><td><div>242</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">CONTENT_TYPE</td><td style="vertical-align:top;">:</td><td><div>application/json</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">DOCUMENT_ROOT</td><td style="vertical-align:top;">:</td><td><div>/usr/share/nginx/html</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT</td><td style="vertical-align:top;">:</td><td><div>*/*</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_ENCODING</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONNECTION</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONTENT_LENGTH</td><td style="vertical-align:top;">:</td><td><div>242</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONTENT_TYPE</td><td style="vertical-align:top;">:</td><td><div>application/json</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_HOST</td><td style="vertical-align:top;">:</td><td><div>fenavillarroel.ddns.net:8080</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_USER_AGENT</td><td style="vertical-align:top;">:</td><td><div>python-requests/2.4.3 CPython/2.7.9 Linux/3.16.0-4-amd64</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">PATH_INFO</td><td style="vertical-align:top;">:</td><td><div>/appsms/default/api</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">QUERY_STRING</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_ADDR</td><td style="vertical-align:top;">:</td><td><div>104.131.165.57</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_PORT</td><td style="vertical-align:top;">:</td><td><div>37644</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REQUEST_METHOD</td><td style="vertical-align:top;">:</td><td><div>POST</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REQUEST_URI</td><td style="vertical-align:top;">:</td><td><div>/appsms/default/api</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_NAME</td><td style="vertical-align:top;">:</td><td><div>fenavillarroel.ddns.net</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PORT</td><td style="vertical-align:top;">:</td><td><div>8080</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PROTOCOL</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_SOFTWARE</td><td style="vertical-align:top;">:</td><td><div>nginx/1.4.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">UWSGI_SCHEME</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/home/web2py/applications/appsms/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/home/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">content_length</td><td style="vertical-align:top;">:</td><td><div>242</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">content_type</td><td style="vertical-align:top;">:</td><td><div>application/json</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">document_root</td><td style="vertical-align:top;">:</td><td><div>/usr/share/nginx/html</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/home/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept</td><td style="vertical-align:top;">:</td><td><div>*/*</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_encoding</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_connection</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_content_length</td><td style="vertical-align:top;">:</td><td><div>242</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_content_type</td><td style="vertical-align:top;">:</td><td><div>application/json</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_host</td><td style="vertical-align:top;">:</td><td><div>fenavillarroel.ddns.net:8080</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_user_agent</td><td style="vertical-align:top;">:</td><td><div>python-requests/2.4.3 CPython/2.7.9 Linux/3.16.0-4-amd64</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>127.0.1.1</div></td></tr><tr><td><div>190.45.80.117</div></td></tr><tr><td><div>sms</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>fenavillarroel.ddns.net</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path_info</td><td style="vertical-align:top;">:</td><td><div>/appsms/default/api</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">query_string</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_addr</td><td style="vertical-align:top;">:</td><td><div>104.131.165.57</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_port</td><td style="vertical-align:top;">:</td><td><div>37644</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_method</td><td style="vertical-align:top;">:</td><td><div>POST</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_uri</td><td style="vertical-align:top;">:</td><td><div>/appsms/default/api</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_name</td><td style="vertical-align:top;">:</td><td><div>fenavillarroel.ddns.net</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_port</td><td style="vertical-align:top;">:</td><td><div>8080</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_protocol</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_software</td><td style="vertical-align:top;">:</td><td><div>nginx/1.4.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">uwsgi.node</td><td style="vertical-align:top;">:</td><td><div>sms</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">uwsgi.version</td><td style="vertical-align:top;">:</td><td><div>2.0.11.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">uwsgi_node</td><td style="vertical-align:top;">:</td><td><div>sms</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">uwsgi_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">uwsgi_version</td><td style="vertical-align:top;">:</td><td><div>2.0.11.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_original_uri</td><td style="vertical-align:top;">:</td><td><div>/appsms/default/api</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_path</td><td style="vertical-align:top;">:</td><td><div>/home/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.12.3-stable+timestamp.2015.08.19.00.18.03</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;wsgi_errors&#x27;, mode &#x27;w&#x27; at 0x7f18a64ae4b0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;built-in function uwsgi_sendfile&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.input</td><td style="vertical-align:top;">:</td><td><div>&lt;uwsgi._Input object at 0x7f18ab4629d8&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multiprocess</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multithread</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;wsgi_errors&#x27;, mode &#x27;w&#x27; at 0x7f18a64ae4b0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;built-in function uwsgi_sendfile&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_input</td><td style="vertical-align:top;">:</td><td><div>&lt;uwsgi._Input object at 0x7f18ab4629d8&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multiprocess</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multithread</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">extension</td><td style="vertical-align:top;">:</td><td><div>html</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">folder</td><td style="vertical-align:top;">:</td><td><div>/home/web2py/applications/appsms/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">function</td><td style="vertical-align:top;">:</td><td><div>api</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">global_settings</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/home/web2py/applications/appsms/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/home/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/home/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>127.0.1.1</div></td></tr><tr><td><div>190.45.80.117</div></td></tr><tr><td><div>sms</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>fenavillarroel.ddns.net</div></td></tr><tr><td><div>127.0.0.1</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.12.3-stable+timestamp.2015.08.19.00.18.03</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_https</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_local</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_restful</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_sheduler</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_shell</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">now</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 6, 10, 13, 53, 13, 211812)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">url</td><td style="vertical-align:top;">:</td><td><div>/appsms/default/api</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">utcnow</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2016, 6, 10, 16, 53, 13, 211878)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi</td><td style="vertical-align:top;">:</td><td><div>&lt;gluon.main.LazyWSGI object at 0x7f18a208da50&gt;</div></td></tr></table></div>'
+tRp68
+sS'frames'
+p69
+(lp70
+(dp71
+S'file'
+p72
+S'/home/web2py/gluon/restricted.py'
+p73
+sS'dump'
+p74
+(dp75
+S'environment'
+p76
+S"{'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'AppConfig': <function AppConfig>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, ...}"
+p77
+sS'ccode'
+p78
+S'<code object <module> at 0x7f18a2004a30, file "/...ications/appsms/controllers/default.py", line 10>'
+p79
+ssS'lnum'
+p80
+I227
+sS'lines'
+p81
+(dp82
+I224
+S'            ccode = code'
+p83
+sI225
+S'        else:'
+p84
+sI226
+S'            ccode = compile2(code, layer)'
+p85
+sI227
+S'        exec ccode in environment'
+p86
+sI228
+S'    except HTTP:'
+p87
+sI229
+S'        raise'
+p88
+sI230
+S'    except RestrictedError:'
+p89
+sI231
+S'        # do not encapsulate (obfuscate) the original RestrictedError'
+p90
+sI222
+S'    try:'
+p91
+sI223
+S'        if isinstance(code, types.CodeType):'
+p92
+ssS'call'
+p93
+S"(code='# -*- coding: utf-8 -*-\\n# this file is released ...locals() \\n\\n\\nresponse._vars=response._caller(api)\\n', environment={'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'AppConfig': <function AppConfig>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, ...}, layer='/home/web2py/applications/appsms/controllers/default.py')"
+p94
+sS'func'
+p95
+S'restricted'
+p96
+sa(dp97
+g72
+S'/home/web2py/applications/appsms/controllers/default.py'
+p98
+sg74
+(dp99
+sg80
+I338
+sg81
+(dp100
+I327
+S'        #execute = os.popen(cmd).read()'
+p101
+sI328
+S'        #app.logger.debug(execute)'
+p102
+sI329
+S"        #sms_id = execute.split('\\n')[0]"
+p103
+sI330
+S'        return dict(status=status)'
+p104
+sI331
+S"        #if not tablename == 'person':"
+p105
+sI332
+S'        #    raise HTTP(400)'
+p106
+sI333
+S'        #return number.json'
+p107
+sI334
+S''
+sI335
+S'    return locals()'
+p108
+sI336
+S''
+ssg93
+S'()'
+p109
+sg95
+S'<module>'
+p110
+sa(dp111
+g72
+S'/home/web2py/gluon/globals.py'
+p112
+sg74
+(dp113
+S'self'
+p114
+S'undefined'
+p115
+sS'f'
+S'<function api>'
+p116
+ssg80
+I412
+sg81
+(dp117
+I416
+S"        self.generic_patterns = ['*']"
+p118
+sI407
+S"        self.flash = ''            # used by the default view layout"
+p119
+sI408
+S'        self.meta = Storage()      # used by web2py_ajax.html'
+p120
+sI409
+S'        self.menu = []             # used by the default view layout'
+p121
+sI410
+S'        self.files = []            # used by web2py_ajax.html'
+p122
+sI411
+S'        self._vars = None'
+p123
+sI412
+S'        self._caller = lambda f: f()'
+p124
+sI413
+S'        self._view_environment = None'
+p125
+sI414
+S'        self._custom_commit = None'
+p126
+sI415
+S'        self._custom_rollback = None'
+p127
+ssg93
+S'(f=<function api>)'
+p128
+sg95
+S'<lambda>'
+p129
+sa(dp130
+g72
+S'/home/web2py/gluon/globals.py'
+p131
+sg74
+(dp132
+S'rest_action'
+p133
+S'<function POST>'
+p134
+sS'_self'
+p135
+S"<Storage {'_vars': <Storage {u'username': u'fena..., 'folder': '/home/web2py/applications/appsms/'}>"
+p136
+sS'_self.args'
+p137
+S'[]'
+p138
+sS'builtingetattr'
+p139
+S'<built-in function getattr>'
+p140
+ssg80
+I378
+sg81
+(dp141
+I373
+S'                rest_action = _action().get(method, None)'
+p142
+sI374
+S'                if not (rest_action and method == method.upper()'
+p143
+sI375
+S'                        and callable(rest_action)):'
+p144
+sI376
+S'                    raise HTTP(405, "method not allowed")'
+p145
+sI377
+S'                try:'
+p146
+sI378
+S"                    return rest_action(*_self.args, **getattr(_self, 'vars', {}))"
+p147
+sI379
+S'                except TypeError, e:'
+p148
+sI380
+S'                    exc_type, exc_value, exc_traceback = sys.exc_info()'
+p149
+sI381
+S'                    if len(traceback.extract_tb(exc_traceback)) == 1:'
+p150
+sI382
+S'                        raise HTTP(400, "invalid arguments")'
+p151
+ssg93
+S"(_action=<function api>, _self=<Storage {'_vars': <Storage {u'username': u'fena..., 'folder': '/home/web2py/applications/appsms/'}>, *a=(), **b={})"
+p152
+sg95
+S'f'
+sa(dp153
+g72
+S'/home/web2py/applications/appsms/controllers/default.py'
+p154
+sg74
+(dp155
+S'username'
+p156
+S"u'fenavillarroel'"
+p157
+sS'id_sms'
+p158
+S'7'
+sS'text'
+p159
+S"u'SALEN CALENTITOS LOS PUNTITOS En JUNIO Te Club...u vendedor estrella y haz brillar tu almac\\xe9n.'"
+p160
+sS'number'
+p161
+S"u'981597377'"
+p162
+sS'os.system'
+p163
+S'<built-in function system>'
+p164
+sS'global os'
+p165
+S"<module 'os' from '/usr/lib/python2.7/os.pyc'>"
+p166
+sS'password'
+p167
+S"u'abc123jU'"
+p168
+ssg80
+I306
+sg81
+(dp169
+I301
+S'        text = request.vars.text'
+p170
+sI302
+S'        number = request.vars.number'
+p171
+sI303
+S'        username = request.vars.username'
+p172
+sI304
+S'        password = request.vars.password'
+p173
+sI305
+S'        id_sms = request.vars.id'
+p174
+sI306
+S"        os.system('echo text:%s number:%s username:%s password:%s idsms:%s > /tmp/reg' % (text,number,username,password,id_sms))"
+p175
+sI307
+S"        status='Cola'"
+p176
+sI308
+S"        if username != 'fenavillarroel' and password !='abc123jU':"
+p177
+sI309
+S'            raise HTTP(500)'
+p178
+sI310
+S''
+ssg93
+S"(*args=(), **vars={u'id': 7, u'number': u'981597377', u'password': u'abc123jU', u'text': u'SALEN CALENTITOS LOS PUNTITOS En JUNIO Te Club...u vendedor estrella y haz brillar tu almac\\xe9n.', u'username': u'fenavillarroel'})"
+p179
+sg95
+S'POST'
+p180
+sasS'pyver'
+p181
+S'Python 2.7.6: /usr/local/bin/uwsgi (prefix: /usr)'
+p182
+sS'session'
+p183
+g67
+(S's\x1a\x00\x00\x00<div><table></table></div>'
+tRp184
+sS'etype'
+p185
+S"<type 'exceptions.UnicodeEncodeError'>"
+p186
+sS'date'
+p187
+S'Fri Jun 10 13:53:13 2016'
+p188
+sS'response'
+p189
+g67
+(S's\xee\x1f\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">body</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringO object at 0x7f18a8a83c00&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_appsms</td><td style="vertical-align:top;">:</td><td><div>104.131.165.57-e33d6e56-adcd-481f-be7b-c74e51cbadc4<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div>/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">delimiters</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>{{</div></td></tr><tr><td><div>}}</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">files</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">form_label_separator</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">formstyle</td><td style="vertical-align:top;">:</td><td><div>bootstrap3_inline</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generic_patterns</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">google_analytics_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">headers</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">X-Powered-By</td><td style="vertical-align:top;">:</td><td><div>web2py</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">menu</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div><table><tr><td><div>Home</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Logs</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/log</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Outgoing</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/outgoing</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Recibidos</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/recibidos</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Dispositivos</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/dispositivos</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Colas</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/colas</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Reload SMS Tools</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/reload</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">meta</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">author</td><td style="vertical-align:top;">:</td><td><div>Your Name &lt;you@example.com&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">description</td><td style="vertical-align:top;">:</td><td><div>a cool new app</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generator</td><td style="vertical-align:top;">:</td><td><div>Web2py Web Framework</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">keywords</td><td style="vertical-align:top;">:</td><td><div>web2py, python, framework</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">models_to_run</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>^\\w+\\.py$</div></td></tr><tr><td><div>^default/\\w+\\.py$</div></td></tr><tr><td><div>^default/api/\\w+\\.py$</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">postprocessing</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_client</td><td style="vertical-align:top;">:</td><td><div>104.131.165.57</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_compression_level</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_expires</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_key</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_data_name</td><td style="vertical-align:top;">:</td><td><div>session_data_appsms</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_file</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_filename</td><td style="vertical-align:top;">:</td><td><div>/home/web2py/applications/appsms/sessions/104.131.165.57-e33d6e56-adcd-481f-be7b-c74e51cbadc4</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_hash</td><td style="vertical-align:top;">:</td><td><div>c0762cbf4baf7f9af97c051e7fcb8083</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id</td><td style="vertical-align:top;">:</td><td><div>104.131.165.57-e33d6e56-adcd-481f-be7b-c74e51cbadc4</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_name</td><td style="vertical-align:top;">:</td><td><div>session_id_appsms</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_masterapp</td><td style="vertical-align:top;">:</td><td><div>appsms</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_new</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_storage_type</td><td style="vertical-align:top;">:</td><td><div>file</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">status</td><td style="vertical-align:top;">:</td><td><div>200</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">subtitle</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">title</td><td style="vertical-align:top;">:</td><td><div>Appsms</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">view</td><td style="vertical-align:top;">:</td><td><div>generic.json</div></td></tr></table></div>'
+tRp190
+sS'locals'
+p191
+(dp192
+S'username'
+p193
+S"u'fenavillarroel'"
+p194
+sS'id_sms'
+p195
+S'7'
+sS'vars'
+p196
+S"{u'id': 7, u'number': u'981597377', u'password': u'abc123jU', u'text': u'SALEN CALENTITOS LOS PUNTITOS En JUNIO Te Club...u vendedor estrella y haz brillar tu almac\\xe9n.', u'username': u'fenavillarroel'}"
+p197
+sS'text'
+p198
+S"u'SALEN CALENTITOS LOS PUNTITOS En JUNIO Te Club...u vendedor estrella y haz brillar tu almac\\xe9n.'"
+p199
+sg50
+S'()'
+p200
+sS'number'
+p201
+S"u'981597377'"
+p202
+sS'password'
+p203
+S"u'abc123jU'"
+p204
+sssS'traceback'
+p205
+S'Traceback (most recent call last):\n  File "/home/web2py/gluon/restricted.py", line 227, in restricted\n    exec ccode in environment\n  File "/home/web2py/applications/appsms/controllers/default.py", line 338, in <module>\n  File "/home/web2py/gluon/globals.py", line 412, in <lambda>\n    self._caller = lambda f: f()\n  File "/home/web2py/gluon/globals.py", line 378, in f\n    return rest_action(*_self.args, **getattr(_self, \'vars\', {}))\n  File "/home/web2py/applications/appsms/controllers/default.py", line 306, in POST\n    os.system(\'echo text:%s number:%s username:%s password:%s idsms:%s > /tmp/reg\' % (text,number,username,password,id_sms))\nUnicodeEncodeError: \'ascii\' codec can\'t encode character u\'\\xe9\' in position 146: ordinal not in range(128)\n'
+p206
+s.
