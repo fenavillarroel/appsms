@@ -5,5 +5,6 @@
 =======
 databases/*.table
 databases/*.log
+errors/*
 >>>>>>> 40ac8c490b70e0632087b9144498f163a5a7fe9f
 
