@@ -17,7 +17,10 @@ if __name__ == '__main__':
     t=text.split()
     sys.stderr.write("=======>>>>> id_sms %s Texto '%s\n'" % (id_sms,t));
     sys.stderr.flush()
-    n=t[4][3:]
+    try:
+        n=t[4][3:]
+    except:
+        n='0'
     db = MySQLdb.connect(host="localhost",user="root",passwd="vmo123",db="smsd")
     con=db.cursor()
     con.execute("select id_outgoing from sms_log where receiver= '%s' order by id desc limit 1" % (n,))
